@@ -1,6 +1,6 @@
 ---
 title: "Code Notebook"
-author: "Eileena Matthews, Hayden Pozzi, Rachel Perry, and Richard Liu"
+author: "Eileena Mathews, Hayden Pozzi, Rachel Perry, and Richard Liu"
 date: "`r Sys.Date()`"
 output: html_document
 ---
