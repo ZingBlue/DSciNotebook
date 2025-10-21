@@ -32,6 +32,124 @@ ai_survey1 <- read_csv(ai_path, show_col_types = FALSE)
 glimpse(ai_survey1)
 ```
 
+## Cleaning the data 
+The original team developed their own data-cleaning code. We adopted their version since it was already effectively cleaned, and we wanted to avoid unnessecary complications.  
+
+
+```{r}
+## functions to simplify data tidying
+
+## recoding technology labels
+recode_technologies <- function(Technology_specific) {
+  recode(Technology_specific,
+                  "WEL" = "Welfare eligibility",
+                "JOB" =  "Job eligibility",
+                "CAN" =  "Cancer risk",
+                "LOAN" = "Loan repayment risk", 
+                "MP" =  "Mobile phone unlock",
+                 "BC" = "Border control",
+                 "PS" = "Police surveillance",
+
+                "AW"  = "Autonomous weapons", 
+                "DC" =  "Driverless cars",
+                "RCA" = "Robotic care assistant",
+               "RVC" ="Robotic vacuum cleaner",
+                                                                         
+               "SMC"=  "Targeted consumer ads",
+                "SMP" = "Targeted political ads",
+                                                                         
+                "VASS"=  "Smart speaker",
+                "VAH"=  "Virtual healthcare assistant",
+                                 
+              "CCR"=   "Climate change simulation",
+                "VR"=  "Education simulations")
+  
+}
+
+## list of demographic variables of interest
+demog <- df1 %>%
+  remove_val_labels() %>%
+  dplyr::select(
+  Respondent_ID, PV25_Weight,
+  RS_Ethnicity_Combined,
+  CS_Age_Band,
+  RS_Sex,
+  RS_EducationLevel,
+  DR_Socio_Eco
+  ) %>%
+  mutate(RS_Ethnicity_Combined = 
+           dplyr::recode(RS_Ethnicity_Combined,
+             "1" = "White",
+             "2" = "Asian or Asian British",
+             "3" = "Black British, Caribbean or African",
+             "4" = "Any other ethnic group"
+           )) %>%
+  mutate(CS_Age_Band = 
+           dplyr::recode(CS_Age_Band,
+             "1" = "18-24 yrs",
+             "2" = "25-34 yrs",
+             "3" = "35-44 yrs",
+             "4" = "45-54 yrs",
+             "5" = "55-64 yrs",
+             "6" = "65-74 yrs",
+             "7" = "75+ yrs"
+           )) %>%
+  mutate(RS_Sex = 
+           dplyr::recode(RS_Sex,
+             "1" = "Male",
+             "2" = "Female")) %>%
+  mutate(RS_EducationLevel = 
+           dplyr::recode(RS_EducationLevel,
+             "1" = "Degree level qualification(s)",
+             "2" = "Non-degree level qualifications",
+             "3" = "No academic or vocational qualifications")) %>%
+  mutate(DR_Socio_Eco = 
+           dplyr::recode(DR_Socio_Eco,
+             "1" = "SEC1, 2",
+             "2" = "SEC3",
+             "3" = "SEC4",
+             "4" = "SEC5",
+             "5" = "SEC6, 7",
+             "6" = "SEC8",
+             "7" = "Students")) %>%
+  pivot_longer(names_to = "Q_Demo",
+               values_to = "A_Demo",
+               RS_Ethnicity_Combined:DR_Socio_Eco)
+
+# list of levels 
+demo_list <- c("White",
+  "Asian or Asian British",
+  "Black British, Caribbean or African", 
+  "Any other ethnic group", 
+  
+  "18-24 yrs",
+  "25-34 yrs",
+  "35-44 yrs",
+  "45-54 yrs",
+  "55-64 yrs",
+  "65-74 yrs",
+  "75+ yrs", 
+  
+  "Male",
+  "Female",
+  "Identify in another way",
+  
+  "Degree level qualification(s)",
+  "Non-degree level qualifications",
+  "No academic or vocational qualifications",
+  
+  "SEC1, 2",
+  "SEC3",
+  "SEC4",
+  "SEC5",
+  "SEC6, 7",
+  "SEC8",
+  "Students", 
+  
+  "Total" )
+```
+
+
 ## Inspect variables and missingness
 
 ```{r inspect-variables}
