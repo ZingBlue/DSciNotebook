@@ -35,6 +35,42 @@ glimpse(ai_survey1)
 ## Cleaning the data 
 The original team developed their own data-cleaning code. We adopted their version since it was already effectively cleaned, and we wanted to avoid unnessecary complications.  
 
+```{r}
+# Read dataset
+df1 <- read_dta("262400371_Public Attitudes to AI_client version.dta")
+```
+
+```{r}
+# Prep data
+# Remove ppt identifying as 'other' and remove 16 year old 
+df1 <- df1 %>%
+  filter(is.na(RS_Sex) | RS_Sex != 3) %>%
+  filter(CS_Age != "16")
+
+# combine ethnicity groupings
+df1 <- df1 %>%
+  mutate(RS_Ethnicity_Combined = 
+           case_when(
+             RS_Ethnicity_Reduced == 1 ~ 1, 
+             RS_Ethnicity_Reduced == 2 ~ 2,
+             RS_Ethnicity_Reduced == 3 ~ 3,
+             RS_Ethnicity_Reduced == 4 | RS_Ethnicity_Reduced == 5 | RS_Ethnicity_Reduced == 6 ~ 4 
+           ))
+
+            #"1" = "White",
+            # "2" = "Asian or Asian British",
+            # "3" = "Black British, Caribbean or African",
+            # "4" = "Any other ethnic group"
+
+df1 <- df1 %>%
+  mutate(Region_combined = 
+           case_when(
+             CS_Region_N < 10 ~ 1, #eng
+             CS_Region_N == 10 ~ 2, #ni
+             CS_Region_N == 11 ~ 3, #scotland
+             CS_Region_N == 12 ~ 4 # wales
+           ))
+```
 
 ```{r}
 ## functions to simplify data tidying
@@ -82,7 +118,7 @@ demog <- df1 %>%
              "1" = "White",
              "2" = "Asian or Asian British",
              "3" = "Black British, Caribbean or African",
-             "4" = "Any other ethnic group"
+             "4" = "Other ethnic group"
            )) %>%
   mutate(CS_Age_Band = 
            dplyr::recode(CS_Age_Band,
