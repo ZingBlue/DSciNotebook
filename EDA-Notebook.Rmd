@@ -6,11 +6,7 @@ editor_options:
 
 \@\@ -5,114 +5,153 \@\@ date: "`r Sys.Date()`" output: html_document ---
 
-```{r}
-install.packages("ggplot2")
-```
-
-```{r}
+```{r setup, include = FALSE}
 # Load all required packages
 library(ggplot2)
 library(dplyr)
@@ -28,7 +24,7 @@ set.seed(2025)
 
 ```
 
-```{r setup, include=FALSE}
+```{r, include=FALSE}
 library(scales)
 # setup: load libraries and options
 library(tidyverse)
@@ -92,30 +88,12 @@ respondents? RQ2: How do perceptions of AI benefits vary by gender and
 age? RQ3: What patterns in the data suggest directions for further
 analysis later in the semester?
 
-## Load data (all the data)
+## Loading raw data set
 
 ```{r}
 ai_path <- "how-do-people-feel-about-ai-main/262400371_Public Attitudes to AI Raw Data NA (1).csv"
 if (!file.exists(ai_path)) stop("Data file not found: ", ai_path)
 ai_survey1 <- read_csv(ai_path, show_col_types = FALSE)
-```
-
-## Cleaning the data
-
-The original team developed their own data-cleaning code. We adopted
-their version since it was already effectively cleaned, and we wanted to
-avoid unnessecary complications.
-
-##Show only the first few rows
-
-```{r}
-ai_path <- "how-do-people-feel-about-ai-main/262400371_Public Attitudes to AI Raw Data NA (1).csv"
-if (!file.exists(ai_path)) stop("Data file not found: ", ai_path)
-
-ai_survey1 <- read_csv(ai_path, show_col_types = FALSE)
-
-# show only top few rows
-
 head(ai_survey1, 10)
 ```
 
@@ -135,6 +113,9 @@ tibble::tribble(
 "weight",        "Survey weight (if applicable)",                 "Numeric"
 ) %>%
 knitr::kable(caption = "Key variables in the preprocessed dataset")
+```
+
+```{r}
 ## functions to simplify data tidying
 
 ## recoding technology labels
@@ -163,9 +144,9 @@ recode_technologies <- function(Technology_specific) {
                 "VR"=  "Education simulations")
   
 }
+```
 
-dplyr::glimpse(ai_survey1)
-
+```{r}
 ## list of demographic variables of interest
 demog <- ai_survey1 %>%
   haven::zap_labels() %>%
@@ -249,7 +230,7 @@ demo_list <- c("White",
   "Total" )
 ```
 
-##Exploratory Data Analysis Age Distribution We start by visualizing the
+## Exploratory Data Analysis Age Distribution We start by visualizing the
 age distribution to understand the demographic range represented in the
 survey
 
@@ -266,11 +247,11 @@ labs(title = "Age Distribution of Respondents", x = "Age (years)", y = "Count")
 Before diving deeper, we can check for missing values and variables
 types
 
-```{r}
+```{r, eval = FALSE}
 library(purrr)
 ```
 
-```{r inspect-variables}
+```{r inspect-variables, eval = FALSE}
 
 var_df <- tibble(
   var = names(ai_survey1)
@@ -279,7 +260,7 @@ var_df <- tibble(
 print(var_df, n = 250)
 ```
 
-##Identify and Prepare Key Columns We standardize variable names, detect
+## Identify and Prepare Key Columns We standardize variable names, detect
 age and gender columns and identify all AI benefit-related columns
 (benb\_). \## Basic cleaning and derived columns
 
@@ -340,7 +321,7 @@ benb_cols <- names(ai_clean)[str_detect(names(ai_clean), regex("^benb|benefit", 
 
 ```
 
-##Show top 10 variables with most missing variables
+## Show top 10 variables with most missing variables
 
 ```{r}
 ai_missing <- tibble(
@@ -380,7 +361,7 @@ if (length(benb_cols) > 0) {
 # glimpse(select(ai_clean, any_of(c("age","sex", benb_cols))))
 ```
 
-##Derive Overall Benefit Tallies (Unweighted)
+## Derive Overall Benefit Tallies (Unweighted)
 
 ```{r}
 # define which columns are your 0/1 benefit flags
@@ -423,7 +404,7 @@ overall_ben <- ai_clean %>%
   dplyr::mutate(pct = n / sum(n))
 ```
 
-##Summary Stats \## Summary statistics
+## Summary statistics
 
 ```{r summary-stats}
 # Age summaries
@@ -459,12 +440,12 @@ mutate(percent = scales::percent(n / sum(n)))
 # Top benefits preview
 if (exists("overall_ben") && nrow(overall_ben) > 0) {
   print(overall_ben %>% arrange(desc(pct)) %>% slice_head(n = 10))
-}
+} ##### add explanation of the variable names
 ```
 
-##Visulization
+## Visualization
 
-Age Histogram \## Visualisations
+Age Histogram
 
 ```{r plots, fig.width=7, fig.height=4}
 # Age histogram
@@ -554,8 +535,11 @@ ggplot(top8, aes(x = n, y = reorder(benefit_clean, n))) +
     plot.title = element_text(face = "bold", size = 16),
     axis.text.y = element_text(size = 10)
   )
+
+## recode to show the actual benefit and not the coded version
 ```
 
+### Edit this to be up to date with the actual benefits
 The chart shows the top eight benefits people see in AI, with most
 responses centered on work and efficiency. Improved Job Matching and
 More Efficient Hiring lead the list, while others like Reduced Human
@@ -773,17 +757,7 @@ benefits overall, while the number of perceived benefits declines
 gradually with age. This suggests that comfort and optimism toward AI
 may decrease with age.
 
-## Notes and next steps
+## Conclusion
 
--   Confirm BENB column names and encoding (1/0 vs "Yes"/"No") and
-    update detection patterns if necessary.
--   If a survey weight column exists (common names: weight, wt, wgt),
-    compute weighted percentages before reporting final estimates.
--   Follow-up: demographic cross-tabs, subgroup comparison plots, and
-    simple regression models.
--   Confirm BENB column names and encoding (1/0 vs "Yes"/"No") and
-    update detection patterns if necessary.
--   If a survey weight column exists (common names: weight, wt, wgt),
-    compute weighted percentages before reporting final estimates.
--   Follow-up: demographic cross-tabs, subgroup comparison plots, and
-    simple regression models.
+## Next Steps
+
