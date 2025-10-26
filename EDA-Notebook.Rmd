@@ -43,6 +43,8 @@ set.seed(2025)
 
 ## Introduction
 
+**Background**
+
 In recent years, artificial intelligence (AI) has shifted from a source
 of uncertainty and risk to a common feature of everyday life. From
 writing assistants and chat bots to algorithmic recommendations in
@@ -58,6 +60,8 @@ writing assistants and chatbots to algorithmic recommendations in
 education, finance, and entertainment, AI has become an embedded feature
 of everyday life.
 
+**Dataset and preprocessing**
+
 To ground our analysis, we use the Public Attitudes to AI (PAI) data set
 produced by the Ada Lovelace Institute (UK). This nationally
 representative survey of approximately 4,000 adults captures attitudes
@@ -70,28 +74,18 @@ exploration: inspect structure and missingness, perform light cleaning,
 compute simple summaries, and visualise perceived benefits of AI in
 hiring.
 
-Data set and Preprocessing This project uses the preprocessed version of
-the data set provided by the Ada Lovelace Institute. The data have
-already been cleaned, anonymized, and standardized by the research team,
-including: \## Load data
+This project uses the preprocessed version of the data set provided by
+the Ada Lovelace Institute. Our group utilized similar cleaning
+techniques based on the descriptive analysis code by the Ada Lovelace
+Institute.
 
-1.  recording of categorical variables (e.g., sex, age_group);
-2.  conversion of “benefit” items into binary 0/1 indicators; and
-3.  removal of personally identifying information and invalid responses.
+**Goal:** Our project aims to replicate the results of the Ada Lovelace
+Institution, but to also consider gender, age, and other demographics
+that impacted survey respondents' perceived benefits of AI.
 
-Because of this prior work, we do not replicate the raw data cleaning
-here. Instead, we focus on exploratory data analysis (EDA) to identify
-overall trends and patterns in public attitudes toward AI.
+## Explaining the Dataset
 
-Research Questions:
-RQ1: Which AI benefits are most widely perceived by
-respondents? 
-RQ2: How do perceptions of AI benefits vary by gender and
-age? 
-RQ3: What patterns in the data suggest directions for further
-analysis later in the semester?
-
-## Loading raw data set
+**Loading raw data set**
 
 ```{r}
 ai_path <- "how-do-people-feel-about-ai-main/262400371_Public Attitudes to AI Raw Data NA (1).csv"
@@ -100,12 +94,12 @@ ai_survey1 <- read_csv(ai_path, show_col_types = FALSE)
 head(ai_survey1, 10)
 ```
 
-## Understanding the Variables
+**Understanding the variables and tidying up**
 
-The Data set includes demographic variables such as age, sex, and region
+The dataset includes demographic variables such as age, sex, and region
 along with multiple binary columns (beginning with 'benb\_')
 representing whether respondents selected each perceived benefit. Below
-we summarize the key variables used in this analysis
+we summarize the key variables used in our analysis
 
 ```{r}
 tibble::tribble(
@@ -118,10 +112,9 @@ tibble::tribble(
 knitr::kable(caption = "Key variables in the preprocessed dataset")
 ```
 
-```{r}
-## functions to simplify data tidying
+[*Recoding technology labels*]{.underline}
 
-## recoding technology labels
+```{r}
 recode_technologies <- function(Technology_specific) {
   recode(Technology_specific,
                   "WEL" = "Welfare eligibility",
@@ -149,8 +142,9 @@ recode_technologies <- function(Technology_specific) {
 }
 ```
 
+[*List of demographic variables of interest*]{.underline}
+
 ```{r}
-## list of demographic variables of interest
 demog <- ai_survey1 %>%
   haven::zap_labels() %>%
   dplyr::select(
@@ -231,43 +225,23 @@ demo_list <- c("White",
   "Students", 
   
   "Total" )
-```
 
-## Exploratory Data Analysis Age Distribution We start by visualizing the
-age distribution to understand the demographic range represented in the
-survey
-
-```{r}
 if ("age" %in% names(ai_survey1)) {
 ggplot(filter(ai, !is.na(age)), aes(age)) +
 geom_histogram(binwidth = 5, fill = "steelblue", color = "white") +
 labs(title = "Age Distribution of Respondents", x = "Age (years)", y = "Count")
 }
+
 ```
 
-## Inspect variables and missingness
+[*Identify and prepare key column key and creating "ai_clean"
+dataset*]{.underline}
 
-Before diving deeper, we can check for missing values and variables
-types
-
-```{r, eval = FALSE}
-library(purrr)
-```
-
-```{r inspect-variables, eval = FALSE}
-
-var_df <- tibble(
-  var = names(ai_survey1)
-)
-
-print(var_df, n = 250)
-```
-
-## Identify and Prepare Key Columns We standardize variable names, detect
-age and gender columns and identify all AI benefit-related columns
-(benb\_). \## Basic cleaning and derived columns
+We standardize variable names, detect age and gender columns and
+identify all AI benefit-related columns (benb\_).
 
 ```{r}
+## Basic cleaning and derived columns
 ai <- read_csv(ai_path, show_col_types = FALSE)
 # Standardise names and add row id
 ai_clean <- ai_survey1 %>%
@@ -324,9 +298,16 @@ benb_cols <- names(ai_clean)[str_detect(names(ai_clean), regex("^benb|benefit", 
 
 ```
 
-## Show top 10 variables with most missing variables
+[*Inspect variables and "missingness"*]{.underline}
+
+Before getting deeper into the data, we wanted to check for missing
+variable types to understand parts of the questionnaire that were left
+unanswered by parts of the survey population. This would give insight
+into variables that are interesting, but that might have missing context
+because of their lack of completion by survey respondents.
 
 ```{r}
+# Show top 10 variables with most missing responses
 ai_missing <- tibble(
 variable = names(ai_clean),
 missing = map_int(ai_clean, ~ sum(is.na(.))),
@@ -360,51 +341,6 @@ if (length(benb_cols) > 0) {
       }
     }))
 }
-# quick check
-# glimpse(select(ai_clean, any_of(c("age","sex", benb_cols))))
-```
-
-## Derive Overall Benefit Tallies (Unweighted)
-
-```{r}
-# define which columns are your 0/1 benefit flags
-benefit_cols <- grep("^benb_", names(ai_clean), value = TRUE)
-# benefit_cols
-
-df_long <- ai_clean %>%
-  mutate(row_id = dplyr::row_number()) %>%
-  tidyr::pivot_longer(
-    cols = dplyr::all_of(benefit_cols),
-    names_to   = "benefit_raw",
-    values_to  = "selected",
-    values_transform = list(selected = as.integer),  # coerce if needed
-    values_drop_na   = TRUE
-  ) %>%
-  dplyr::filter(selected == 1L) %>%
-  dplyr::mutate(benefit = benefit_raw) %>%
-  dplyr::count(benefit) %>%
-  dplyr::mutate(pct = n / sum(n))
-```
-
-```{r, eval= FALSE}
- # ai_clean %>% 
- #  dplyr::summarise(across(everything(), ~ all(. %in% c(0,1), na.rm = TRUE))) %>%
- # t() %>%
-  # tibble::as_tibble(rownames = "var") %>%
-  # dplyr::filter(value == TRUE)
-
-```
-
-
-
-```{r derive-overall-ben}
-overall_ben <- ai_clean %>%
-  tidyr::pivot_longer(all_of(benb_cols), names_to = "benefit", values_to = "selected",
-                      values_transform = list(selected = as.integer),
-                      values_drop_na = TRUE) %>%
-  dplyr::filter(selected == 1L) %>%
-  dplyr::count(benefit, sort = TRUE) %>%
-  dplyr::mutate(pct = n / sum(n))
 ```
 
 ## Summary statistics
@@ -439,16 +375,11 @@ count(sex, sort = TRUE) %>%
 mutate(percent = scales::percent(n / sum(n)))
   print(ai_clean %>% count(sex, sort = TRUE) %>% mutate(p = n / sum(n)))
 }
-
-# Top benefits preview
-if (exists("overall_ben") && nrow(overall_ben) > 0) {
-  print(overall_ben %>% arrange(desc(pct)) %>% slice_head(n = 10))
-} ##### add explanation of the variable names
 ```
 
-## Visualization
+## Visualizations and findings
 
-Age Histogram
+[**Age Histogram**]{.underline}
 
 ```{r plots, fig.width=7, fig.height=4}
 # Age histogram
@@ -467,7 +398,7 @@ Most participants fall between their 20s and 50s, showing a good mix of
 working-age adults. Fewer people over 70 took the survey, but the data
 still includes a wide range of ages.
 
-Gender Distribution
+[**Gender Distribution**]{.underline}
 
 ```{r}
 # Gender bar chart
@@ -490,21 +421,65 @@ female participants, giving a balanced view of public attitudes toward
 AI. This balance helps ensure that later comparisons by gender aren’t
 biased by unequal sample sizes.
 
-Top 8 Perceived Benefits of AI
+[*Top 8 Perceived Benefits of AI*]{.underline}
+
+**Derive Overall Benefit Tallies (Unweighted)**
+
+```{r, eval = FALSE}
+## Derive Overall Benefit Tallies (Unweighted)
+# define which columns are your 0/1 benefit flags
+benefit_cols <- grep("^benb_", names(ai_clean), value = TRUE)
+# benefit_cols
+
+df_long <- ai_clean %>%
+  mutate(row_id = dplyr::row_number()) %>%
+  tidyr::pivot_longer(
+    cols = dplyr::all_of(benefit_cols),
+    names_to   = "benefit_raw",
+    values_to  = "selected",
+    values_transform = list(selected = as.integer),  # coerce if needed
+    values_drop_na   = TRUE
+  ) %>%
+  dplyr::filter(selected == 1L) %>%
+  dplyr::mutate(benefit = benefit_raw) %>%
+  dplyr::count(benefit) %>%
+  dplyr::mutate(pct = n / sum(n))
+```
+
+```{r, eval= FALSE}
+ # ai_clean %>% 
+ #  dplyr::summarise(across(everything(), ~ all(. %in% c(0,1), na.rm = TRUE))) %>%
+ # t() %>%
+  # tibble::as_tibble(rownames = "var") %>%
+  # dplyr::filter(value == TRUE)
+
+```
+
+```{r derive-overall-ben}
+overall_ben <- ai_clean %>%
+  tidyr::pivot_longer(all_of(benb_cols), names_to = "benefit", values_to = "selected",
+                      values_transform = list(selected = as.integer),
+                      values_drop_na = TRUE) %>%
+  dplyr::filter(selected == 1L) %>%
+  dplyr::count(benefit, sort = TRUE) %>%
+  dplyr::mutate(pct = n / sum(n))
+```
+
+## 
 
 ```{r}
 overall_ben <- overall_ben %>%
   mutate(
     benefit = str_to_lower(str_trim(benefit)),  # clean names first
     benefit_label = recode(benefit,
-      "benb_mp01" = "Improved Job Matching",
-      "benb_mp02" = "More Efficient Hiring",
-      "benb_rvc03" = "Reduced Human Bias",
-      "benb_can01" = "Career Advancement",
-      "benb_ps01"  = "Personal Safety",
-      "benb_vass02" = "Accessible Services",
-      "benb_bc01"  = "Better Customer Service",
-      "benb_rvc01" = "Reduced Cost",
+      "benb_mp01" = "Faster to unlock devices",
+      "benb_mp02" = "Personal information more safe and secure",
+      "benb_rvc03" = "Vacuuming possible for people who have trouble with manual tasks",
+      "benb_can01" = "Earlier detection of cancer",
+      "benb_ps01"  = "Identify wanted criminals and missing persons",
+      "benb_vass02" = "People with difficulty using devices have better access to features",
+      "benb_bc01"  = "Processing people at border control will be faster",
+      "benb_rvc01" = "Tech can do vacuuming and save people time",
       .default = benefit  # keeps unmapped names so nothing breaks
     )
   )
@@ -512,18 +487,19 @@ overall_ben <- overall_ben %>%
 ```
 
 ```{r}
-# Benefits bar (top 8)
+# Select Top 8 by count
 top8 <- overall_ben %>%
   arrange(desc(n)) %>%
   slice_head(n = 8) %>%
   mutate(
-    benefit_clean = benefit %>%
-      gsub("^benb_", "", .) %>%
-      gsub("_", " ", .) %>%
-      tools::toTitleCase()
+    benefit_label = factor(
+      benefit_label,
+      levels = benefit_label[order(n, decreasing = TRUE)]
+    )
   )
 
-ggplot(top8, aes(x = n, y = reorder(benefit_clean, n))) +
+# Plot Top 8 with recoded labels
+ggplot(top8, aes(x = n, y = benefit_label)) +
   geom_col(fill = "steelblue") +
   geom_text(aes(label = n), hjust = -0.1, size = 3.7) +
   coord_cartesian(xlim = c(0, max(top8$n) * 1.15)) +
@@ -539,228 +515,34 @@ ggplot(top8, aes(x = n, y = reorder(benefit_clean, n))) +
     axis.text.y = element_text(size = 10)
   )
 
-## recode to show the actual benefit and not the coded version
 ```
 
-### Edit this to be up to date with the actual benefits
-The chart shows the top eight benefits people see in AI, with most
-responses centered on work and efficiency. Improved Job Matching and
-More Efficient Hiring lead the list, while others like Reduced Human
-Bias and Career Advancement reflect optimism about fairness and
-opportunity. Overall, respondents view AI as a tool that makes life
-easier, safer, and a bit more convenient.
+The raw response data suggests that there is no single dominant theme in
+how the public perceives the benefits of AI. Instead, respondents
+highlight a wide range of advantages that span everyday life (e.g.,
+vacuuming or unlocking devices), improved accessibility for people with
+disabilities, enhanced security of personal information, and support for
+public safety and border processes.
 
-Correlation Heat Map
+Overall, people seem to view AI as a set of practical tools that can
+make daily life a bit easier, safer, and more efficient. But, their
+perceived benefits are not focused on one area.
 
-```{r}
+## Looking deeper - AI Usage for Accessibility Purposes
 
-library(ggcorrplot)
-
-#select only the top 10 benefit columns
-top10_ben <- overall_ben %>%
-  arrange(desc(pct)) %>%
-  slice_head(n = 10) %>%
-  pull(benefit)
-
-#correlation matrix
-benb_matrix <- ai_clean %>%
-  select(all_of(top10_ben)) %>%
-  mutate(across(everything(), as.numeric)) %>%
-  cor(use = "pairwise.complete.obs")
-
-#replace any NAs with 0
-benb_matrix[is.na(benb_matrix)] <- 0
-
-#readable labels
-benefit_labels <- c(
-  "benb_mp01" = "Improved Job Matching",
-  "benb_mp02" = "More Efficient Hiring",
-  "benb_rvc03" = "Reduced Human Bias",
-  "benb_can01" = "Career Advancement",
-  "benb_ps01"  = "Personal Safety",
-  "benb_vass02" = "Accessible Services",
-  "benb_bc01"  = "Better Customer Service",
-  "benb_rvc01" = "Reduced Cost",
-  "benb_vr03"  = "Virtual Reality Support"
-)
-
-rownames(benb_matrix) <- benefit_labels[rownames(benb_matrix)]
-colnames(benb_matrix) <- benefit_labels[colnames(benb_matrix)]
-
-#plot larger and clearer with ggcorrplot
-ggcorrplot(
-  benb_matrix,
-  type = "lower",
-  lab = TRUE,         # show numeric values
-  lab_size = 3.5,     # larger label size
-  tl.cex = 10,        # enlarge text labels
-  colors = c("steelblue", "brown", "yellow"),
-  ggtheme = theme_minimal(base_size = 14),
-  title = "Correlation Between Top 10 AI Benefit Selections"
-) +
-  theme(
-    axis.text.x = element_text(angle = 45, hjust = 1, size = 10),
-    axis.text.y = element_text(size = 10),
-    plot.title = element_text(hjust = 0.5, face = "bold", size = 16)
-  )
-
-```
-
-This heatmap shows how the top ten perceived benefits of AI relate to
-one another. The colors represent the strength of correlation between
-benefits: lighter yellow tones indicate stronger positive relationships,
-while darker brown areas show weaker or little association.
-
-Overall, most benefits are positively correlated, meaning people who
-view AI favorably in one area (like Improved Job Matching or More
-Efficient Hiring) tend to also see advantages in related areas such as
-Reduced Human Bias or Career Advancement. This suggests that respondents
-often see AI’s impact as multi-dimensional—improving fairness,
-opportunity, and convenience at the same time.
-
-AI Benefits by Gender
-
-```{r}
-# --- Perceived AI Benefits by Gender (fixed version) ---
-if (exists("benb_cols") && "sex" %in% names(ai_clean)) {
-
-  gender_benefit <- ai_clean %>%
-    select(sex, all_of(benb_cols)) %>%
-    mutate(across(all_of(benb_cols), as.character)) %>%
-    pivot_longer(-sex, names_to = "benefit", values_to = "selected") %>%
-    mutate(
-      selected = str_to_lower(str_trim(selected)),
-      selected = case_when(
-        selected %in% c("1","yes","y","true","selected") ~ 1L,
-        selected %in% c("0","no","n","false","not selected") ~ 0L,
-        TRUE ~ NA_integer_
-      )
-    ) %>%
-    group_by(sex, benefit) %>%
-    summarise(pct = mean(selected, na.rm = TRUE), .groups = "drop")
-
-  # Top 8 by overall pct
-  top8 <- overall_ben %>%
-    arrange(desc(pct)) %>%
-    slice_head(n = 8) %>%
-    pull(benefit)
-
-  # Pretty labels (add more as needed)
-  benefit_labels <- c(
-    "benb_mp01"  = "Improved Job Matching",
-    "benb_mp02"  = "More Efficient Hiring",
-    "benb_rvc03" = "Reduced Human Bias",
-    "benb_can01" = "Career Advancement",
-    "benb_ps01"  = "Personal Safety",
-    "benb_vass02"= "Accessible Services",
-    "benb_bc01"  = "Better Customer Service",
-    "benb_rvc01" = "Reduced Cost"
-  )
-
-  plot_df <- gender_benefit %>%
-    filter(benefit %in% top8) %>%
-    mutate(
-      benefit_label = recode(benefit, !!!benefit_labels, .default = benefit),
-      # ensure ordering by overall pct (not within-sex)
-      benefit_label = factor(benefit_label,
-                             levels = recode(top8, !!!benefit_labels, .default = top8))
-    )
-
-  ggplot(plot_df, aes(x = benefit_label, y = pct, fill = sex)) +
-    geom_col(position = "dodge") +
-    coord_flip() +
-    scale_y_continuous(labels = percent_format(accuracy = 1)) +
-    scale_fill_manual(values = c("pink", "lightblue")) +
-    labs(
-      title = "Perceived benefits of AI in hiring (top items)",
-      x = NULL,
-      y = "Unweighted % selecting",
-      fill = "Gender"
-    ) +
-    theme_minimal(base_size = 13) +
-    theme(plot.title = element_text(face = "bold", hjust = 0.5))
-}
-```
-```{r}
-# Determine top 8 benefits based on overall selection %
-top8 <- overall_ben %>%
-  arrange(desc(pct)) %>%
-  slice_head(n = 8) %>%
-  pull(benefit)
-
-# Apply readable labels (extend if needed)
-benefit_labels <- c(
-  "benb_mp01"  = "Improved Job Matching",
-  "benb_mp02"  = "More Efficient Hiring",
-  "benb_rvc03" = "Reduced Human Bias",
-  "benb_can01" = "Career Advancement",
-  "benb_ps01"  = "Personal Safety",
-  "benb_vass02"= "Accessible Services",
-  "benb_bc01"  = "Better Customer Service",
-  "benb_rvc01" = "Reduced Cost"
-)
-
-plot_df <- gender_benefit %>%
-  filter(benefit %in% top8) %>%
-  mutate(
-    benefit_label = recode(benefit, !!!benefit_labels, .default = benefit),
-    benefit_label = factor(
-      benefit_label,
-      levels = recode(top8, !!!benefit_labels, .default = top8)
-    )
-  )
-
-ggplot(plot_df, aes(x = benefit_label, y = pct, fill = sex)) +
-  geom_col(position = "dodge") +
-  coord_flip() +
-  scale_y_continuous(labels = percent_format(accuracy = 1)) +
-  scale_fill_manual(values = c("Female" = "pink", "Male" = "lightblue")) +
-  labs(
-    title = "Perceived Benefits of AI in Hiring by Gender",
-    x = NULL,
-    y = "Unweighted % selecting",
-    fill = "Gender"
-  ) +
-  theme_minimal(base_size = 13) +
-  theme(plot.title = element_text(face = "bold", hjust = 0.5))
-
-
-
-```
-
-
-
-The chart compares how men and women perceive AI’s key benefits. Both
-groups highlight Reduced Human Bias and Career Advancement as top
-advantages, but women tend to rate Personal Safety and Accessible
-Services slightly higher. These patterns suggest that while perceptions
-of AI are largely similar across genders, women may place greater
-emphasis on fairness and safety-related benefits.
-
-Age vs Number of Benefits Seleced
-
-```{r}
-ai_clean <- ai_clean %>%
-  mutate(benefit_count = rowSums(select(., all_of(benb_cols)) == 1, na.rm = TRUE))
-
-ggplot(ai_clean, aes(x = age, y = benefit_count)) +
-  geom_point(alpha = 0.3, color = "steelblue") +
-  geom_smooth(method = "loess", color = "darkorange", se = TRUE) +
-  labs(
-    title = "Relationship Between Age and Number of AI Benefits Selected",
-    x = "Age (Years)",
-    y = "Number of Benefits Selected"
-  ) +
-  theme_minimal(base_size = 14) +
-  theme(plot.title = element_text(face = "bold", hjust = 0.5))
-```
-
-The scatter plot shows that younger respondents tend to identify more AI
-benefits overall, while the number of perceived benefits declines
-gradually with age. This suggests that comfort and optimism toward AI
-may decrease with age.
+Because the perceived benefits of AI span a variety of domains, we next
+focused our analysis on a specific application to better understand how
+attitudes differ across demographic groups. We selected Robo-vacuums as
+a case example: an everyday form of AI that can meaningfully improve
+accessibility, particularly for individuals with mobility limitations or
+other disabilities. Prior research has noted that assistive cleaning
+technologies can reduce physical strain and support independent living
+among vulnerable populations *([Cleaning Is Caring,
+n.d.)](https://www.cleaningiscaring.org/wpd/disability-friendly-cleaning/)*.
+By examining responses related to Robo-vacuum use, we explore whether
+age, gender, and other demographic characteristics influence who
+recognizes these accessibility-related benefits of AI.
 
 ## Conclusion
 
 ## Next Steps
-
