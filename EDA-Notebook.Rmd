@@ -83,9 +83,12 @@ Because of this prior work, we do not replicate the raw data cleaning
 here. Instead, we focus on exploratory data analysis (EDA) to identify
 overall trends and patterns in public attitudes toward AI.
 
-Research Questions RQ1: Which AI benefits are most widely perceived by
-respondents? RQ2: How do perceptions of AI benefits vary by gender and
-age? RQ3: What patterns in the data suggest directions for further
+Research Questions:
+RQ1: Which AI benefits are most widely perceived by
+respondents? 
+RQ2: How do perceptions of AI benefits vary by gender and
+age? 
+RQ3: What patterns in the data suggest directions for further
 analysis later in the semester?
 
 ## Loading raw data set
