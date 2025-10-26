@@ -307,16 +307,31 @@ into variables that are interesting, but that might have missing context
 because of their lack of completion by survey respondents.
 
 ```{r}
-# Show top 10 variables with most missing responses
-ai_missing <- tibble(
-variable = names(ai_clean),
-missing = map_int(ai_clean, ~ sum(is.na(.))),
-missing_pct = round(map_dbl(ai_clean, ~ mean(is.na(.))) * 100, 2)
-) %>%
-arrange(desc(missing_pct)) %>%
-slice_head(n = 10)
+name_map <- c(
+  "governance_9" = "AI Governance – Who should ensure AI is used safely?",
+  "benb_loan_7"  = "AI & Loans (Benefits) – How can AI loan risk prediction be beneficial?",
+  "benb_rvc_4"   = "Robotic Vacuums (Benefits) – How are robotic vacuums beneficial?",
+  "conb_loan_12" = "AI & Loans (Concerns) – What are your concerns about AI loan risk prediction?",
+  "benb_aw_7"    = "Autonomous Weapons (Benefits) – How could autonomous weapons be beneficial?",
+  "benb_ps_6"    = "Face Recognition in Policing (Benefits) – How could it benefit policing/surveillance?",
+  "benb_bc_7"    = "Face Recognition at Borders (Benefits) – How could it benefit border control?",
+  "benb_ccr_5"   = "AI & Climate Research (Benefits) – How could AI simulations help climate research?",
+  "benb_can_6"   = "AI & Cancer Prediction (Benefits) – How could AI cancer prediction be beneficial?",
+  "benb_smc_4"   = "Targeted Ads (Benefits) – How could targeted social media ads be beneficial?"
+)
+ai_missing <- tibble( variable = names(ai_clean), missing = map_int(ai_clean, ~ sum(is.na(.))), missing_pct = round(map_dbl(ai_clean, ~ mean(is.na(.))) * 100, 2) ) %>% arrange(desc(missing_pct)) %>% slice_head(n = 10)
 
-knitr::kable(ai_missing, caption = "Top 10 Variables with the Highest Missingness")
+ai_missing_disp <- ai_missing %>%
+  mutate(
+    variable_display = dplyr::recode(variable, !!!name_map, .default = variable)
+    # If you want to keep the code too, use:
+    # variable_display = dplyr::recode(variable, !!!name_map, .default = variable) |>
+    #                    paste0(" (", variable, ")")
+  ) %>%
+  select(variable = variable_display, missing, missing_pct)
+
+knitr::kable(ai_missing_disp, caption = "Top 10 Variables with the Highest Missingness")
+
 # Detect BENB-like columns and coerce to 0/1 integers where possible
 benb_cols <- names(ai_clean)[str_detect(names(ai_clean), regex("^benb|benb_job|benefit|benefits|benb_", ignore_case = TRUE))]
 if (length(benb_cols) == 0) {
@@ -341,6 +356,8 @@ if (length(benb_cols) > 0) {
       }
     }))
 }
+
+
 ```
 
 ## Summary statistics
@@ -532,17 +549,255 @@ perceived benefits are not focused on one area.
 
 Because the perceived benefits of AI span a variety of domains, we next
 focused our analysis on a specific application to better understand how
-attitudes differ across demographic groups. We selected Robo-vacuums as
-a case example: an everyday form of AI that can meaningfully improve
-accessibility, particularly for individuals with mobility limitations or
-other disabilities. Prior research has noted that assistive cleaning
-technologies can reduce physical strain and support independent living
-among vulnerable populations *([Cleaning Is Caring,
+attitudes differ across demographic groups. We selected Robo-vacuums and
+assistants as a case example: an everyday form of AI that can
+meaningfully improve accessibility, particularly for individuals with
+mobility limitations or other disabilities. Prior research has noted
+that assistive cleaning technologies can reduce physical strain and
+support independent living among vulnerable populations *([Cleaning Is
+Caring,
 n.d.)](https://www.cleaningiscaring.org/wpd/disability-friendly-cleaning/)*.
-By examining responses related to Robo-vacuum use, we explore whether
-age, gender, and other demographic characteristics influence who
-recognizes these accessibility-related benefits of AI.
+By examining responses related to Robo-vacuum and robo-assistants , we
+explore whether age, gender, and other demographic characteristics
+influence who recognizes these accessibility-related benefits of AI.
+
+```{r}
+# Identify column name automatically if needed
+aware_var <- names(ai_clean)[str_detect(names(ai_clean), regex("aware_rca", ignore_case = TRUE))]
+stopifnot(length(aware_var) == 1)
+
+# Create age group bands if numeric age exists
+age_group_df <- ai_clean %>%
+  filter(!is.na(.data[[aware_var]])) %>%
+  mutate(
+    awareness = case_when(
+      str_to_lower(str_trim(.data[[aware_var]])) %in% c("1","yes","y","true") ~ "Yes",
+      str_to_lower(str_trim(.data[[aware_var]])) %in% c("0","no","n","false") ~ "No",
+      TRUE ~ "Not sure"
+    ),
+    age_group = case_when(
+      age < 25 ~ "18–24",
+      age >= 25 & age <= 34 ~ "25–34",
+      age >= 35 & age <= 44 ~ "35–44",
+      age >= 45 & age <= 54 ~ "45–54",
+      age >= 55 & age <= 64 ~ "55–64",
+      age >= 65 ~ "65+",
+      TRUE ~ NA_character_
+    )
+  ) %>%
+  filter(!is.na(age_group))
+
+aware_age <- ai_clean %>%
+  select(age_group = age, aware_rca = aware_rca) %>%
+  filter(!is.na(age_group), aware_rca %in% c(1,2,3)) %>%
+  mutate(
+    aware = case_when(
+      aware_rca == 1 ~ 1L,        # Yes
+      aware_rca %in% c(2,3) ~ 0L  # No + Not sure
+    )
+  ) %>%
+  group_by(age_group) %>%
+  summarise(pct_yes = mean(aware), .groups = "drop")
+
+aware_age <- aware_age %>%
+  mutate(age_num = as.numeric(age_group))  # Convert ordered factor to numeric for regression
+
+ggplot(aware_age, aes(x = age_group, y = pct_yes)) +
+  geom_col(fill = "#4B8EA8") +
+   # Regression line
+  geom_smooth(aes(x = age_num, y = pct_yes), 
+              method = "lm", 
+              se = FALSE, 
+              color = "red", 
+              size = 1,
+              linetype = "dashed",
+              inherit.aes = FALSE) +
+  scale_y_continuous(labels = scales::percent_format(accuracy = 1)) +
+  labs(
+    title = "Awareness of Robotic Care Assistants by Age",
+    subtitle = "Percent who have heard of robotic care assistants",
+    x = "Age Group", y = "% Aware"
+  ) +
+  theme_minimal(base_size = 14)
+```
+
+Although the bar heights suggest that awareness of robotic care
+assistants increases with age, the regression line reveals a subtle
+downward trend across older age groups. This discrepancy likely reflects
+sample imbalance, as only 7.5% of respondents were 75+, resulting in
+greater variability and reduced confidence when estimating awareness
+levels for the oldest segment of the population.
+
+```{r}
+ai_clean %>%
+  summarise(
+    total = n(),
+    n_75plus = sum(age >= 75, na.rm = TRUE),
+    pct_75plus = round(n_75plus / total * 100, 1)
+  )
+
+```
+
+```{r}
+# Recode response values to labels
+ai_plot <- ai_clean %>%
+  select(age, bena_rca) %>%
+  mutate(
+    bena_rca = recode(as.character(bena_rca),
+      "1" = "Very beneficial",
+      "2" = "Fairly beneficial",
+      "3" = "Not very beneficial",
+      "4" = "Not at all beneficial",
+      "5" = "Don't know",
+      .default = NA_character_
+    ),
+    age_band = cut(
+      age,
+      breaks = c(17, 24, 34, 44, 54, 64, 74, Inf),
+      labels = c("18–24", "25–34", "35–44", "45–54", "55–64", "65–74", "75+"),
+      right = TRUE
+    )
+  ) %>%
+  filter(!is.na(age_band), !is.na(bena_rca))
+
+# Make simple bar chart
+ggplot(ai_plot, aes(x = age_band, fill = bena_rca)) +
+  geom_bar(position = "fill") +
+  scale_y_continuous(labels = scales::percent) +
+  scale_fill_brewer(palette = "Blues", direction = 1) +
+  labs(
+    title = "Perceived Benefit of Robotic Care Assistants by Age Group",
+    subtitle = "Question: To what extent do you think the use of robotic care assistants will be beneficial?",
+    x = "Age group",
+    y = "Percent of respondents",
+    fill = "Response"
+  ) +
+  theme_minimal(base_size = 12)
+```
+
+```{r}
+concern_age <- ai_clean %>%
+  select(age_group = age, concern = cona_rca) %>% 
+  filter(!is.na(age_group) & concern %in% c(1,2,3,4,5)) %>%
+  mutate(
+    concerned = case_when(
+      concern %in% c(1,2) ~ 1L,   # Very + Somewhat concerned
+      concern %in% c(3,4,5) ~ 0L  # Not concerned + Don't know
+    )
+  ) %>%
+  group_by(age_group) %>%
+  summarise(
+    pct_concern = mean(concerned, na.rm = TRUE),
+    n = n(),
+    .groups = "drop"
+  )
+
+ggplot(concern_age, aes(x = age_group, y = pct_concern, group = 1)) +
+  
+  geom_col(fill = "#D95F02", alpha = 0.7) +
+
+  # Regression line
+  geom_smooth(aes(x = as.numeric(age_group), y = pct_concern),
+              method = "lm", se = FALSE,
+              color = "black", size = 1,
+              linetype = "dashed",
+              inherit.aes = FALSE) +
+  
+  scale_y_continuous(labels = scales::percent_format(accuracy = 1),
+                     limits = c(0,1)) +
+  
+  labs(
+    title = "Concern About Robotic Care Assistants by Age",
+    subtitle = "Share of respondents who are very or somewhat concerned",
+    x = "Age Group",
+    y = "% Concerned"
+  ) +
+
+  theme_minimal(base_size = 14) +
+  theme(
+    plot.title = element_text(face = "bold", hjust = 0.5),
+    panel.grid.minor = element_blank()
+  )
+
+```
+
+Concern about robotic care assistants increases with age, indicating
+that older respondents are especially wary of this technology. However,
+elevated concern is evident across all age groups, showing that unease
+toward robotic care assistants is a broadly shared sentiment and not
+exclusively an older-adult issue.
+
+```{r}
+
+```
+
+```{r}
+# Select all BENB_DC columns
+benb_dc_data <- ai_clean %>%
+  select(starts_with("benb_dc"))
+
+# Convert to long format
+benb_dc_long <- benb_dc_data %>%
+  mutate(id = row_number()) %>%  # respondent ID
+  pivot_longer(
+    cols = starts_with("benb_dc"),
+    names_to = "option",
+    values_to = "selected"
+  )
+
+# Summarise counts and percentages
+benb_dc_summary <- benb_dc_long %>%
+  filter(!is.na(selected)) %>%
+  group_by(option) %>%
+  summarise(
+    count = sum(selected == 1, na.rm = TRUE),
+    total_respondents = n_distinct(id),
+    percent = (count / total_respondents) * 100
+  ) %>%
+  ungroup() %>%
+  # Clean up inconsistent naming
+  mutate(
+    option = tolower(option),
+    option = str_replace_all(option, "benb[_]?dc[_]?", "benb_dc"),
+    option = str_replace_all(option, "0+", "")
+  ) %>%
+  # Remove unwanted items
+  filter(!option %in% c("benb_dc10", "benb_dc11")) %>%
+  arrange(desc(percent))
+
+# ---- PLOT ----
+ggplot(benb_dc_summary, aes(x = reorder(option, percent), y = percent)) +
+  geom_col(fill = "steelblue") +
+  coord_flip() +
+  scale_x_discrete(
+    labels = c(
+      "benb_dc1" = "Easier car travel",
+      "benb_dc2" = "More time for other activities",
+      "benb_dc3" = "More accurate driving",
+      "benb_dc4" = "Fewer accidents",
+      "benb_dc5" = "Easier for disabled or older drivers",
+      "benb_dc6" = "Saves money on drivers",
+      "benb_dc7" = "Something else",
+      "benb_dc8" = "None of these",
+      "benb_dc9" = "Don't know"
+    )
+  ) +
+  labs(
+    title = "Perceived Benefits of Driverless Cars",
+    x = NULL,
+    y = "Percentage of Respondents (%)"
+  ) +
+  theme_minimal() +
+  theme(
+    axis.text.y = element_text(size = 10),
+    plot.title = element_text(face = "bold", size = 14)
+  )
+```
 
 ## Conclusion
+
+-   statsiticaly significant
+
+-   
 
 ## Next Steps
