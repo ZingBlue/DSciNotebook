@@ -790,15 +790,208 @@ ggplot(benb_dc_summary, aes(x = reorder(option, percent), y = percent)) +
   )
 ```
 
-## Conclusion
-Overall, the findings show that artificial intelligence has become an ordinary part of daily life and a valuable tool for improving accessibility. Across examples such as robotic vacuum cleaners, robotic care assistants, and driverless cars, the results highlight how people recognize the ways these technologies make everyday tasks easier, safer, and more inclusive.
+## Exploring benefit score vs age (bridge to modeling)
 
-Robotic vacuums help individuals who have difficulty performing physical chores, allowing them to maintain independence in their homes. Robotic care assistants provide support with reminders, mobility, and daily needs, which can improve comfort and quality of life for people with disabilities or older adults. Driverless vehicles offer new freedom of movement for those who cannot drive, expanding access to work, healthcare, and social connection.
+```{r}
+if (length(benb_cols) > 0 && "age" %in% names(ai_clean)) {
 
-Although some participants expressed concerns about safety or trust, the overall responses show optimism toward these technologies when they are designed responsibly and used to improve accessibility. People view them as practical tools that reduce barriers and promote equal participation in society.
+  ai_model_df <- ai_clean %>%
+    mutate(
+      benefit_score = rowSums(across(all_of(benb_cols)), na.rm = TRUE)
+    ) %>%
+    select(age, benefit_score) %>%
+    filter(!is.na(age), !is.na(benefit_score))
 
-In summary, the survey results suggest that artificial intelligence can help build a more accessible and inclusive world when developed with careful attention to safety, fairness, and human needs.
+  ggplot(ai_model_df, aes(x = age, y = benefit_score)) +
+    geom_point(alpha = 0.2) +
+    geom_smooth(method = "lm", se = FALSE, color = "red") +
+    labs(
+      title = "Total Number of Benefits Selected vs Age",
+      subtitle = "A simple illustration of how a regression model may treat benefit score as an outcome",
+      x = "Age",
+      y = "Benefit score (count of benefits selected)"
+    ) +
+    theme_minimal()
+}
+```
+The scatterplot shows that although people across all ages select a wide range of AI benefits, there is no strong linear relationship between age and the total number of benefits selected. The regression line is almost flat, suggesting that older adults are not necessarily more or less likely than younger adults to see AI as beneficial overall.
+However, the large spread in benefit scores at every age indicates that age alone cannot explain variation in attitudes. This reinforces why a regression model is needed: to test how age interacts with other factors such as gender, education, socio-economic status, and awareness—to more accurately predict who perceives AI as beneficial.
 
-## Next Steps
-For our next steps, we plan to run simple statistical tests to see if gender or education differences in perceptions are significant. We also want to focus more on disability and accessibility by comparing how people with mobility challenges or other disabilities view robotic vacuums and care assistants compared to those without disabilities. Instead of using age as a stand-in for disability, we’ll look directly at how accessibility needs shape people’s views of AI in daily life. This will help us better understand whether individuals who might benefit most from assistive technology actually recognize AI as useful and supportive.
+```{r}
+## Prepare data for regression
 
+# 1. Overall benefit score: sum across all benb_ columns
+ai_clean$model_benefit_score <- rowSums(ai_clean[, benb_cols], na.rm = TRUE)
+
+# 2. Recode outcomes for Robotic Care Assistants (RCA)
+ai_clean <- ai_clean %>%
+  mutate(
+    rca_beneficial = case_when(
+      bena_rca %in% c(1, 2) ~ 1,   # Very or fairly beneficial
+      bena_rca %in% c(3, 4) ~ 0,   # Not very / not at all beneficial
+      TRUE ~ NA_real_
+    ),
+    rca_concerned = case_when(
+      cona_rca %in% c(1, 2) ~ 1,   # Very or somewhat concerned
+      cona_rca %in% c(3, 4, 5) ~ 0, # Not very / not at all / don't know
+      TRUE ~ NA_real_
+    )
+  )
+
+# 3. Build modeling dataset with the correct column names
+model_df <- ai_clean %>%
+  select(
+    age,
+    sex,
+    rs_education_level,  # <-- this is the real name in your data
+    dr_socio_eco,        # <-- socio-economic group
+    model_benefit_score,
+    rca_beneficial,
+    rca_concerned
+  ) %>%
+  filter(!is.na(age), !is.na(sex))
+
+head(model_df)
+
+
+```
+```{r}
+# Convert categorical predictors to factors
+model_df <- model_df %>%
+  mutate(
+    sex = factor(sex),
+    rs_education_level = factor(rs_education_level,
+                                labels = c("Degree", "Non-degree", "No qualifications")),
+    dr_socio_eco = factor(dr_socio_eco)
+  )
+```
+
+## Model 1: Benefit Score ~ Age
+
+```{r}
+model1 <- lm(model_benefit_score ~ age, data = model_df)
+summary(model1)
+```
+
+## Model 2: Logistic Regression (Who thinks RCAs are beneficial?)
+
+```{r}
+model2 <- glm(
+  rca_beneficial ~ age + sex + rs_education_level + dr_socio_eco,
+  data = model_df,
+  family = binomial()
+)
+summary(model2)
+```
+## Model 2: graph
+
+```{r coef_plot_model2, fig.width=7, fig.height=5}
+m2_tidy <- broom::tidy(model2, conf.int = TRUE, exponentiate = TRUE) %>%
+  dplyr::filter(term != "(Intercept)") %>%
+  dplyr::mutate(
+    term = dplyr::recode(term,
+                         "sexMale" = "Male (vs Female)",
+                         "age" = "Age (per year)",
+                         "rs_education_levelNon-degree" = "Non-degree (vs Degree)",
+                         "rs_education_levelNo qualifications" = "No qualifications (vs Degree)",
+                         "dr_socio_eco2" = "SEC 2",
+                         "dr_socio_eco3" = "SEC 3",
+                         "dr_socio_eco4" = "SEC 4",
+                         "dr_socio_eco5" = "SEC 5",
+                         "dr_socio_eco6" = "SEC 6",
+                         "dr_socio_eco7" = "SEC 7"
+                        ),
+    term = forcats::fct_reorder(term, estimate)
+  )
+
+ggplot(m2_tidy, aes(x = term, y = estimate)) +
+  geom_point(size = 3) +
+  geom_errorbar(aes(ymin = conf.low, ymax = conf.high), width = 0.1) +
+  coord_flip() +
+  labs(
+    title = "Odds Ratios for Viewing RCAs as Beneficial",
+    x = NULL,
+    y = "Odds Ratio (95% CI)"
+  ) +
+  geom_hline(yintercept = 1, linetype = "dashed") +
+  theme_minimal()
+```
+
+## Model 3: Logistic Regression (Who is concerned about RCAs?)
+
+```{r}
+model3 <- glm(
+  rca_concerned ~ age + sex + rs_education_level + dr_socio_eco,
+  data = model_df,
+  family = binomial()
+)
+summary(model3)
+```
+
+## Graph
+
+```{r coef_plot_model3, fig.width=7, fig.height=5}
+m3_tidy <- broom::tidy(model3, conf.int = TRUE, exponentiate = TRUE) %>%
+  dplyr::filter(term != "(Intercept)") %>%
+  dplyr::mutate(
+    term = dplyr::recode(
+      term,
+      "sexMale" = "Male (vs Female)",
+      "age" = "Age (per year)",
+      "rs_education_levelNon-degree" = "Non-degree (vs Degree)",
+      "rs_education_levelNo qualifications" = "No qualifications (vs Degree)",
+      "dr_socio_eco2" = "SEC 2",
+      "dr_socio_eco3" = "SEC 3",
+      "dr_socio_eco4" = "SEC 4",
+      "dr_socio_eco5" = "SEC 5",
+      "dr_socio_eco6" = "SEC 6",
+      "dr_socio_eco7" = "SEC 7"
+    ),
+    term = forcats::fct_reorder(term, estimate)
+  )
+
+ggplot(m3_tidy, aes(x = term, y = estimate)) +
+  geom_point(size = 3) +
+  geom_errorbar(aes(ymin = conf.low, ymax = conf.high), width = 0.1) +
+  coord_flip() +
+  labs(
+    title = "Odds Ratios for Concern About RCAs",
+    x = NULL,
+    y = "Odds Ratio (95% CI)"
+  ) +
+  geom_hline(yintercept = 1, linetype = "dashed") +
+  theme_minimal()
+```
+
+## Regression Results 
+
+
+### Model 1: Benefit Score ~ Age
+Age is not a significant predictor of the total number of AI benefits a respondent selects. The slope is very close to zero, and the model explains almost none of the variation in benefit scores. This confirms our earlier scatterplot: people across all ages report similar levels of perceived benefit.
+
+### Model 2: RCA Beneficial ~ Age + Sex + Education + SEC
+Age, gender, and education significantly predict whether respondents view robotic care assistants as beneficial. Older adults are less likely to view RCAs positively, while men are more likely to see benefits. Respondents with lower education levels and some lower socio-economic groups also show reduced likelihood of perceiving RCAs as beneficial. These results suggest that demographic differences meaningfully shape attitudes toward assistive robotic technologies
+
+### Model 3: RCA Concerned ~ Age + Sex + Education + SEC
+Age and gender significantly predict concern about robotic care assistants. Older adults are more likely to be concerned, while men are substantially less likely to express concern. Education and most socio-economic categories do not show significant effects. Concern about RCAs appears to be driven mainly by age and gender differences.
+
+## Conclusion 
+
+Overall, our analysis shows that while artificial intelligence is now woven into everyday life, people vary in how they perceive its usefulness—especially when AI is applied to accessibility-related tasks. Across examples such as robotic vacuum cleaners, robotic care assistants, and driverless cars, many respondents recognize practical benefits: saving time, reducing physical strain, and supporting independent living for older adults or individuals with mobility limitations. These descriptive patterns reflect a general optimism toward the potential of AI to make daily activities easier and more efficient.
+However, the regression results reveal that these attitudes are not evenly distributed across demographic groups. Age and gender consistently emerged as significant predictors. Older adults were less likely to view robotic care assistants as beneficial and more likely to express concern, suggesting heightened caution among populations who could arguably benefit most from assistive technologies. Gender gaps were also notable—men had higher odds of seeing RCAs as beneficial and significantly lower odds of being concerned compared to women. While education and socio-economic status showed some influence, their effects were smaller and less consistent.
+Together, these findings suggest that public attitudes toward AI accessibility tools are shaped not only by the technology itself but also by the demographic and social experiences people bring to it. As AI systems become more embedded in health, caregiving, and household activities, understanding these differences is essential. Designing inclusive technologies will require paying attention not only to functional performance but also to the social and emotional factors—such as trust, familiarity, and perceived risk—that shape how different groups evaluate AI in everyday life
+
+## Future Direction 
+
+The models in this notebook focus on broad demographic predictors of how people
+view robotic care assistants. A natural next step would be to incorporate more
+direct measures of accessibility and disability (for example, disability status
+and caring responsibilities) to see whether those who might benefit most from
+assistive technologies are more likely to view them as useful or concerning. It
+would also be valuable to add measures of technology experience and confidence,
+and to explore interaction terms (such as age × disability or gender × tech
+comfort) to test whether demographic groups respond differently depending on
+their everyday relationship with technology. Finally, future work could apply
+survey weights and more flexible models (e.g., logistic regression with
+interactions or multilevel models) to better generalize these findings to the
+UK population.
