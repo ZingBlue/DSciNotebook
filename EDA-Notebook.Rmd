@@ -1,8 +1,10 @@
 ---
-editor_options:
-  markdown:
-    wrap: 72
+title: "Perceptions of Classical AI Across Demographics"
+author: "Richard Liu, Eileena Mathews, Rachel Perry, Hayden Pozzi"
+date: "`r Sys.Date()`"
+output: html_document
 ---
+
 
 ```{r setup, include = FALSE}
 # Load all required packages
@@ -119,6 +121,8 @@ listing demographic variables of interest, identifying and preparing key column 
 identifying all AI benefit-related columns (benb\_), and inspecting variables and "N/A" values.
 However, for the sake of keeping our document conscise and informative, we have decided to omit
 these steps from our report. To view our further tidying, visit the associated **.Rmd** file.
+
+Likewise, we will artfully omit code from our analysis. To use an engineering analogy, this is to concentrate the reader on the "signal" rather than the "noise".
 
 <!-- [*Recoding technology labels*]{.underline} -->
 
@@ -311,7 +315,7 @@ Before getting deeper into the data, we wanted to check for missing
 variable types to understand parts of the questionnaire that were left
 unanswered by parts of the survey population. This would give insight
 into variables that are interesting, but that might have missing context
-because of their lack of completion by survey respondents.
+because of their lack of completion by survey respondents. We will not be using these in our analysis.
 
 ```{r echo=FALSE}
 name_map <- c(
@@ -449,37 +453,7 @@ biased by unequal sample sizes.
 
 **Derive Overall Benefit Tallies (Unweighted)**
 
-```{r, eval = FALSE}
-## Derive Overall Benefit Tallies (Unweighted)
-# define which columns are your 0/1 benefit flags
-benefit_cols <- grep("^benb_", names(ai_clean), value = TRUE)
-# benefit_cols
-
-df_long <- ai_clean %>%
-  mutate(row_id = dplyr::row_number()) %>%
-  tidyr::pivot_longer(
-    cols = dplyr::all_of(benefit_cols),
-    names_to   = "benefit_raw",
-    values_to  = "selected",
-    values_transform = list(selected = as.integer),  # coerce if needed
-    values_drop_na   = TRUE
-  ) %>%
-  dplyr::filter(selected == 1L) %>%
-  dplyr::mutate(benefit = benefit_raw) %>%
-  dplyr::count(benefit) %>%
-  dplyr::mutate(pct = n / sum(n))
-```
-
-```{r, eval= FALSE}
- # ai_clean %>% 
- #  dplyr::summarise(across(everything(), ~ all(. %in% c(0,1), na.rm = TRUE))) %>%
- # t() %>%
-  # tibble::as_tibble(rownames = "var") %>%
-  # dplyr::filter(value == TRUE)
-
-```
-
-```{r derive-overall-ben}
+```{r derive-overall-ben, echo=FALSE}
 overall_ben <- ai_clean %>%
   tidyr::pivot_longer(all_of(benb_cols), names_to = "benefit", values_to = "selected",
                       values_transform = list(selected = as.integer),
@@ -488,8 +462,6 @@ overall_ben <- ai_clean %>%
   dplyr::count(benefit, sort = TRUE) %>%
   dplyr::mutate(pct = n / sum(n))
 ```
-
-## 
 
 ```{r}
 overall_ben <- overall_ben %>%
@@ -508,9 +480,7 @@ overall_ben <- overall_ben %>%
     )
   )
 
-```
 
-```{r}
 # Select Top 8 by count
 top8 <- overall_ben %>%
   arrange(desc(n)) %>%
@@ -521,7 +491,9 @@ top8 <- overall_ben %>%
       levels = benefit_label[order(n, decreasing = TRUE)]
     )
   )
+```
 
+```{r echo=FALSE}
 # Plot Top 8 with recoded labels
 ggplot(top8, aes(x = n, y = benefit_label)) +
   geom_col(fill = "steelblue") +
@@ -551,6 +523,9 @@ public safety and border processes.
 Overall, people seem to view AI as a set of practical tools that can
 make daily life a bit easier, safer, and more efficient. But, their
 perceived benefits are not focused on one area.
+
+This leads us to question whether some demographic groups perceive benefits of AI in some areas,
+while other may perceive benefits in another area. We investigate this hypothesis below:
 
 ## Looking deeper - AI Usage for Accessibility Purposes
 
@@ -880,6 +855,8 @@ model1 <- lm(model_benefit_score ~ age, data = model_df)
 summary(model1)
 ```
 
+Age is not a significant predictor of the total number of AI benefits a respondent selects. The slope is very close to zero, and the model explains almost none of the variation in benefit scores. This confirms our earlier scatterplot: people across all ages report similar levels of perceived benefit.
+
 ## Model 2: Logistic Regression (Who thinks RCAs are beneficial?)
 
 ```{r}
@@ -890,9 +867,9 @@ model2 <- glm(
 )
 summary(model2)
 ```
-## Model 2: graph
 
-```{r coef_plot_model2, fig.width=7, fig.height=5}
+```{r coef_plot_model2, echo=FALSE, fig.height=5, fig.width=7}
+# Model 2: graph
 m2_tidy <- broom::tidy(model2, conf.int = TRUE, exponentiate = TRUE) %>%
   dplyr::filter(term != "(Intercept)") %>%
   dplyr::mutate(
@@ -924,6 +901,10 @@ ggplot(m2_tidy, aes(x = term, y = estimate)) +
   theme_minimal()
 ```
 
+<!-- ### Model 2: RCA Beneficial ~ Age + Sex + Education + SEC -->
+
+Age, gender, and education significantly predict whether respondents view robotic care assistants as beneficial. Older adults are less likely to view RCAs positively, while men are more likely to see benefits. Respondents with lower education levels and some lower socio-economic groups also show reduced likelihood of perceiving RCAs as beneficial. These results suggest that demographic differences meaningfully shape attitudes toward assistive robotic technologies
+
 ## Model 3: Logistic Regression (Who is concerned about RCAs?)
 
 ```{r}
@@ -935,9 +916,8 @@ model3 <- glm(
 summary(model3)
 ```
 
-## Graph
-
-```{r coef_plot_model3, fig.width=7, fig.height=5}
+```{r coef_plot_model3, echo=FALSE, fig.height=5, fig.width=7}
+# Model 3: graph
 m3_tidy <- broom::tidy(model3, conf.int = TRUE, exponentiate = TRUE) %>%
   dplyr::filter(term != "(Intercept)") %>%
   dplyr::mutate(
@@ -970,16 +950,8 @@ ggplot(m3_tidy, aes(x = term, y = estimate)) +
   theme_minimal()
 ```
 
-## Regression Results 
 
-
-### Model 1: Benefit Score ~ Age
-Age is not a significant predictor of the total number of AI benefits a respondent selects. The slope is very close to zero, and the model explains almost none of the variation in benefit scores. This confirms our earlier scatterplot: people across all ages report similar levels of perceived benefit.
-
-### Model 2: RCA Beneficial ~ Age + Sex + Education + SEC
-Age, gender, and education significantly predict whether respondents view robotic care assistants as beneficial. Older adults are less likely to view RCAs positively, while men are more likely to see benefits. Respondents with lower education levels and some lower socio-economic groups also show reduced likelihood of perceiving RCAs as beneficial. These results suggest that demographic differences meaningfully shape attitudes toward assistive robotic technologies
-
-### Model 3: RCA Concerned ~ Age + Sex + Education + SEC
+<!-- ### Model 3: RCA Concerned ~ Age + Sex + Education + SEC -->
 Age and gender significantly predict concern about robotic care assistants. Older adults are more likely to be concerned, while men are substantially less likely to express concern. Education and most socio-economic categories do not show significant effects. Concern about RCAs appears to be driven mainly by age and gender differences.
 
 ## Conclusion 
