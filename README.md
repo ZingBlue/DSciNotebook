@@ -9,15 +9,16 @@ Primary data set: <https://github.com/AdaLovelaceInstitute/how-do-people-feel-ab
 This project explores demographic differences in attitudes toward AI, produce summary visualizations, provides statistical models (e.g., subgroup comparisons and regression) to understand these differences. To view the report, see the exploratory analysis notebook: [EDA-Notebook.html](./EDA-Notebook.html).
 
 In some ways, the data we use is a bit special: recorded in late 2022, the data provides insight into how lay people in the UK perceived AI *prior* to the mass adoption of generative AI technologies.
-As a result, we learn about how people perceive classical (aka non-generative) AI. In lay terms, classical AI is a form of AI created to solve a very specific problem.
+As a result, (by induction) we learn about how people perceive classical (aka non-generative) AI *today*.
+In lay terms, classical AI is a form of AI created to solve a very specific problem.
 Typical applications of classical AI include organizing social media feeds, facial recognition, solving puzzles (such as mazes, chess, etc...), etc...
-In contrast, generative AI (as the name suggests) is best at generation and creation of transformed data.
-In practice, this output data often comes in the form of text, visual art, and music. ChatGPT is probably the most well-known of these technologies.
+In contrast, generative AI (such as ChatGPT) generates and transforms data.
+In practice, this output data often comes in the form of text, visual art, and music.
 
 Since classical AI and generative AI are often conflated nowadays (generative AI has taken grasp of the [mind](https://en.wikipedia.org/wiki/AI_takeover) and [hearts](https://people.com/man-proposed-to-his-ai-chatbot-girlfriend-11757334) of the public in the past few years),
 it is difficult to determine how the public views classical AI.
 
-Thus, our best impression of how the public perceives classical AI *today* is best recorded in *late 2022*.
+Thus, our best impression of how the public perceives classical AI *today* is best recorded in *late 2022* - exactly when our data set was recorded!
 
 Our project aims to understand how lay people perceive classical AI and its applications, in particular, we became curious about how demographics (such as age, sex, etc...) impact these perceptions.
 
