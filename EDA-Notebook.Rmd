@@ -1,8 +1,7 @@
 ---
-editor_options: 
-  markdown: 
+editor_options:
+  markdown:
     wrap: 72
-
 ---
 
 ```{r setup, include = FALSE}
@@ -18,7 +17,11 @@ library(janitor)
 library(corrplot)
 
 # Global knit options
-knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+knitr::opts_chunk$set(
+	echo = TRUE,
+	message = FALSE,
+	warning = FALSE
+)
 set.seed(2025)
 
 ```
@@ -86,7 +89,7 @@ that impacted survey respondents' perceived benefits of AI.
 
 **Loading raw data set**
 
-```{r}
+```{r echo=FALSE}
 ai_path <- "how-do-people-feel-about-ai-main/262400371_Public Attitudes to AI Raw Data NA (1).csv"
 if (!file.exists(ai_path)) stop("Data file not found: ", ai_path)
 ai_survey1 <- read_csv(ai_path, show_col_types = FALSE)
@@ -111,9 +114,15 @@ tibble::tribble(
 knitr::kable(caption = "Key variables in the preprocessed dataset")
 ```
 
-[*Recoding technology labels*]{.underline}
+We preform additional tidyding such as recoding technology labels,
+listing demographic variables of interest, identifying and preparing key column key and creating "ai_clean" data set, standardizing variable names, detecting age and gender columns,
+identifying all AI benefit-related columns (benb\_), and inspecting variables and "N/A" values.
+However, for the sake of keeping our document conscise and informative, we have decided to omit
+these steps from our report. To view our further tidying, visit the associated **.Rmd** file.
 
-```{r}
+<!-- [*Recoding technology labels*]{.underline} -->
+
+```{r echo=FALSE}
 recode_technologies <- function(Technology_specific) {
   recode(Technology_specific,
                   "WEL" = "Welfare eligibility",
@@ -141,9 +150,9 @@ recode_technologies <- function(Technology_specific) {
 }
 ```
 
-[*List of demographic variables of interest*]{.underline}
+<!-- [*List of demographic variables of interest*]{.underline} -->
 
-```{r}
+```{r echo=FALSE}
 demog <- ai_survey1 %>%
   haven::zap_labels() %>%
   dplyr::select(
@@ -233,13 +242,12 @@ labs(title = "Age Distribution of Respondents", x = "Age (years)", y = "Count")
 
 ```
 
-[*Identify and prepare key column key and creating "ai_clean"
-dataset*]{.underline}
+<!-- [*Identify and prepare key column key and creating "ai_clean" dataset*]{.underline} -->
 
-We standardize variable names, detect age and gender columns and
-identify all AI benefit-related columns (benb\_).
+<!-- We standardize variable names, detect age and gender columns and
+identify all AI benefit-related columns (benb\_). -->
 
-```{r}
+```{r echo=FALSE}
 ## Basic cleaning and derived columns
 ai <- read_csv(ai_path, show_col_types = FALSE)
 # Standardise names and add row id
@@ -297,7 +305,7 @@ benb_cols <- names(ai_clean)[str_detect(names(ai_clean), regex("^benb|benefit", 
 
 ```
 
-[*Inspect variables and "missingness"*]{.underline}
+<!-- [*Inspect variables and "missingness"*]{.underline} -->
 
 Before getting deeper into the data, we wanted to check for missing
 variable types to understand parts of the questionnaire that were left
@@ -305,7 +313,7 @@ unanswered by parts of the survey population. This would give insight
 into variables that are interesting, but that might have missing context
 because of their lack of completion by survey respondents.
 
-```{r}
+```{r echo=FALSE}
 name_map <- c(
   "governance_9" = "AI Governance – Who should ensure AI is used safely?",
   "benb_loan_7"  = "AI & Loans (Benefits) – How can AI loan risk prediction be beneficial?",
@@ -359,7 +367,7 @@ if (length(benb_cols) > 0) {
 
 ```
 
-## Summary statistics
+## Summary Statistics
 
 ```{r summary-stats}
 # Age summaries

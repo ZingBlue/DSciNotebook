@@ -393,10 +393,6 @@ of AI.</p>
 <div id="explaining-the-dataset" class="section level2">
 <h2>Explaining the Dataset</h2>
 <p><strong>Loading raw data set</strong></p>
-<pre class="r"><code>ai_path &lt;- &quot;how-do-people-feel-about-ai-main/262400371_Public Attitudes to AI Raw Data NA (1).csv&quot;
-if (!file.exists(ai_path)) stop(&quot;Data file not found: &quot;, ai_path)
-ai_survey1 &lt;- read_csv(ai_path, show_col_types = FALSE)
-head(ai_survey1, 10)</code></pre>
 <pre><code>## # A tibble: 10 × 715
 ##    Respondent_ID PV25_LengthInSeconds PV25_LengthInMinutes
 ##            &lt;dbl&gt;                &lt;dbl&gt;                &lt;dbl&gt;
@@ -462,207 +458,26 @@ knitr::kable(caption = &quot;Key variables in the preprocessed dataset&quot;)</c
 </tr>
 </tbody>
 </table>
-<p><u><em>Recoding technology labels</em></u></p>
-<pre class="r"><code>recode_technologies &lt;- function(Technology_specific) {
-  recode(Technology_specific,
-                  &quot;WEL&quot; = &quot;Welfare eligibility&quot;,
-                &quot;JOB&quot; =  &quot;Job eligibility&quot;,
-                &quot;CAN&quot; =  &quot;Cancer risk&quot;,
-                &quot;LOAN&quot; = &quot;Loan repayment risk&quot;, 
-                &quot;MP&quot; =  &quot;Mobile phone unlock&quot;,
-                 &quot;BC&quot; = &quot;Border control&quot;,
-                 &quot;PS&quot; = &quot;Police surveillance&quot;,
-
-                &quot;AW&quot;  = &quot;Autonomous weapons&quot;, 
-                &quot;DC&quot; =  &quot;Driverless cars&quot;,
-                &quot;RCA&quot; = &quot;Robotic care assistant&quot;,
-               &quot;RVC&quot; =&quot;Robotic vacuum cleaner&quot;,
-                                                                         
-               &quot;SMC&quot;=  &quot;Targeted consumer ads&quot;,
-                &quot;SMP&quot; = &quot;Targeted political ads&quot;,
-                                                                         
-                &quot;VASS&quot;=  &quot;Smart speaker&quot;,
-                &quot;VAH&quot;=  &quot;Virtual healthcare assistant&quot;,
-                                 
-              &quot;CCR&quot;=   &quot;Climate change simulation&quot;,
-                &quot;VR&quot;=  &quot;Education simulations&quot;)
-  
-}</code></pre>
-<p><u><em>List of demographic variables of interest</em></u></p>
-<pre class="r"><code>demog &lt;- ai_survey1 %&gt;%
-  haven::zap_labels() %&gt;%
-  dplyr::select(
-  Respondent_ID, PV25_Weight,
-  RS_Ethnicity_Reduced,
-  CS_Age_Band,
-  RS_Sex,
-  RS_EducationLevel,
-  DR_Socio_Eco
-  ) %&gt;%
-  mutate(RS_Ethnicity_Combined = 
-           dplyr::recode(RS_Ethnicity_Reduced,
-             &quot;1&quot; = &quot;White&quot;,
-             &quot;2&quot; = &quot;Asian or Asian British&quot;,
-             &quot;3&quot; = &quot;Black British, Caribbean or African&quot;,
-             &quot;4&quot; = &quot;Any other ethnic group&quot;
-           )) %&gt;%
-  mutate(CS_Age_Band = 
-           dplyr::recode(CS_Age_Band,
-             &quot;1&quot; = &quot;18-24 yrs&quot;,
-             &quot;2&quot; = &quot;25-34 yrs&quot;,
-             &quot;3&quot; = &quot;35-44 yrs&quot;,
-             &quot;4&quot; = &quot;45-54 yrs&quot;,
-             &quot;5&quot; = &quot;55-64 yrs&quot;,
-             &quot;6&quot; = &quot;65-74 yrs&quot;,
-             &quot;7&quot; = &quot;75+ yrs&quot;
-           )) %&gt;%
-  mutate(RS_Sex = 
-           dplyr::recode(RS_Sex,
-             &quot;1&quot; = &quot;Male&quot;,
-             &quot;2&quot; = &quot;Female&quot;)) %&gt;%
-  mutate(RS_EducationLevel = 
-           dplyr::recode(RS_EducationLevel,
-             &quot;1&quot; = &quot;Degree level qualification(s)&quot;,
-             &quot;2&quot; = &quot;Non-degree level qualifications&quot;,
-             &quot;3&quot; = &quot;No academic or vocational qualifications&quot;)) %&gt;%
-  mutate(DR_Socio_Eco = 
-           dplyr::recode(DR_Socio_Eco,
-             &quot;1&quot; = &quot;SEC1, 2&quot;,
-             &quot;2&quot; = &quot;SEC3&quot;,
-             &quot;3&quot; = &quot;SEC4&quot;,
-             &quot;4&quot; = &quot;SEC5&quot;,
-             &quot;5&quot; = &quot;SEC6, 7&quot;,
-             &quot;6&quot; = &quot;SEC8&quot;,
-             &quot;7&quot; = &quot;Students&quot;)) %&gt;%
-  pivot_longer(names_to = &quot;Q_Demo&quot;,
-               values_to = &quot;A_Demo&quot;,
-               RS_Ethnicity_Combined:DR_Socio_Eco)
-
-# list of levels 
-demo_list &lt;- c(&quot;White&quot;,
-  &quot;Asian or Asian British&quot;,
-  &quot;Black British, Caribbean or African&quot;, 
-  &quot;Any other ethnic group&quot;, 
-  
-  &quot;18-24 yrs&quot;,
-  &quot;25-34 yrs&quot;,
-  &quot;35-44 yrs&quot;,
-  &quot;45-54 yrs&quot;,
-  &quot;55-64 yrs&quot;,
-  &quot;65-74 yrs&quot;,
-  &quot;75+ yrs&quot;, 
-  
-  &quot;Male&quot;,
-  &quot;Female&quot;,
-  &quot;Identify in another way&quot;,
-  
-  &quot;Degree level qualification(s)&quot;,
-  &quot;Non-degree level qualifications&quot;,
-  &quot;No academic or vocational qualifications&quot;,
-  
-  &quot;SEC1, 2&quot;,
-  &quot;SEC3&quot;,
-  &quot;SEC4&quot;,
-  &quot;SEC5&quot;,
-  &quot;SEC6, 7&quot;,
-  &quot;SEC8&quot;,
-  &quot;Students&quot;, 
-  
-  &quot;Total&quot; )
-
-if (&quot;age&quot; %in% names(ai_survey1)) {
-ggplot(filter(ai, !is.na(age)), aes(age)) +
-geom_histogram(binwidth = 5, fill = &quot;steelblue&quot;, color = &quot;white&quot;) +
-labs(title = &quot;Age Distribution of Respondents&quot;, x = &quot;Age (years)&quot;, y = &quot;Count&quot;)
-}</code></pre>
-<p><u><em>Identify and prepare key column key and creating “ai_clean”
-dataset</em></u></p>
-<p>We standardize variable names, detect age and gender columns and
-identify all AI benefit-related columns (benb_).</p>
-<pre class="r"><code>## Basic cleaning and derived columns
-ai &lt;- read_csv(ai_path, show_col_types = FALSE)
-# Standardise names and add row id
-ai_clean &lt;- ai_survey1 %&gt;%
-  clean_names() %&gt;%
-  mutate(row_id = row_number())
-
-ai_clean &lt;- ai %&gt;%
-clean_names() %&gt;%
-mutate(row_id = row_number())
-
-# Detect age column
-
-age_col &lt;- names(ai_clean)[str_detect(names(ai_clean), regex(&quot;age&quot;, ignore_case = TRUE))][1]
-# Detect age column (common names cs_age, csage, cs_age_yrs, age)
-age_col &lt;- names(ai_clean)[str_detect(names(ai_clean), regex(&quot;\\b(cs_age|csage|age|age_years|cs_age_yrs)\\b&quot;, ignore_case = TRUE))] %&gt;% .[1]
-if (!is.na(age_col)) {
-ai_clean &lt;- ai_clean %&gt;%
-mutate(age = as.integer(.data[[age_col]])) %&gt;%
-filter(is.na(age) | age &gt;= 17)
-  ai_clean &lt;- ai_clean %&gt;%
-    mutate(age = as.integer(.data[[age_col]])) %&gt;%
-    filter(is.na(age) | age &gt;= 17)  # remove implausible 16 if present
-}
-
-# Detect sex/gender column
-
-sex_col &lt;- names(ai_clean)[str_detect(names(ai_clean), regex(&quot;sex|gender&quot;, ignore_case = TRUE))][1]
-sex_col &lt;- names(ai_clean)[str_detect(names(ai_clean), regex(&quot;^rs_sex$|sex|gender&quot;, ignore_case = TRUE))] %&gt;% .[1]
-if (!is.na(sex_col)) {
-ai_clean &lt;- ai_clean %&gt;%
-mutate(
-sex_raw = as.character(.data[[sex_col]]),
-sex = case_when(
-sex_raw %in% c(&quot;1&quot;, &quot;Male&quot;, &quot;male&quot;, &quot;M&quot;) ~ &quot;Male&quot;,
-sex_raw %in% c(&quot;2&quot;, &quot;Female&quot;, &quot;female&quot;, &quot;F&quot;) ~ &quot;Female&quot;,
-TRUE ~ NA_character_
-)
-)
-  ai_clean &lt;- ai_clean %&gt;%
-    mutate(
-      sex_raw = as.character(.data[[sex_col]]),
-      sex = case_when(
-        sex_raw %in% c(&quot;1&quot;, 1, &quot;Male&quot;, &quot;male&quot;, &quot;M&quot;) ~ &quot;Male&quot;,
-        sex_raw %in% c(&quot;2&quot;, 2, &quot;Female&quot;, &quot;female&quot;, &quot;F&quot;) ~ &quot;Female&quot;,
-        TRUE ~ NA_character_
-      )
-    )
-}
-
-# Detect benefit-related columns
-
-benb_cols &lt;- names(ai_clean)[str_detect(names(ai_clean), regex(&quot;^benb|benefit&quot;, ignore_case = TRUE))]
-# glimpse(select(ai_clean, any_of(c(&quot;age&quot;, &quot;sex&quot;, benb_cols))))</code></pre>
-<p><u><em>Inspect variables and “missingness”</em></u></p>
+<p>We preform additional tidyding such as recoding technology labels,
+listing demographic variables of interest, identifying and preparing key
+column key and creating “ai_clean” data set, standardizing variable
+names, detecting age and gender columns, identifying all AI
+benefit-related columns (benb_), and inspecting variables and “N/A”
+values. However, for the sake of keeping our document conscise and
+informative, we have decided to omit these steps from our report. To
+view our further tidying, visit the associated <strong>.Rmd</strong>
+file.</p>
+<!-- [*Recoding technology labels*]{.underline} -->
+<!-- [*List of demographic variables of interest*]{.underline} -->
+<!-- [*Identify and prepare key column key and creating "ai_clean" dataset*]{.underline} -->
+<!-- We standardize variable names, detect age and gender columns and
+identify all AI benefit-related columns (benb\_). -->
+<!-- [*Inspect variables and "missingness"*]{.underline} -->
 <p>Before getting deeper into the data, we wanted to check for missing
 variable types to understand parts of the questionnaire that were left
 unanswered by parts of the survey population. This would give insight
 into variables that are interesting, but that might have missing context
 because of their lack of completion by survey respondents.</p>
-<pre class="r"><code>name_map &lt;- c(
-  &quot;governance_9&quot; = &quot;AI Governance – Who should ensure AI is used safely?&quot;,
-  &quot;benb_loan_7&quot;  = &quot;AI &amp; Loans (Benefits) – How can AI loan risk prediction be beneficial?&quot;,
-  &quot;benb_rvc_4&quot;   = &quot;Robotic Vacuums (Benefits) – How are robotic vacuums beneficial?&quot;,
-  &quot;conb_loan_12&quot; = &quot;AI &amp; Loans (Concerns) – What are your concerns about AI loan risk prediction?&quot;,
-  &quot;benb_aw_7&quot;    = &quot;Autonomous Weapons (Benefits) – How could autonomous weapons be beneficial?&quot;,
-  &quot;benb_ps_6&quot;    = &quot;Face Recognition in Policing (Benefits) – How could it benefit policing/surveillance?&quot;,
-  &quot;benb_bc_7&quot;    = &quot;Face Recognition at Borders (Benefits) – How could it benefit border control?&quot;,
-  &quot;benb_ccr_5&quot;   = &quot;AI &amp; Climate Research (Benefits) – How could AI simulations help climate research?&quot;,
-  &quot;benb_can_6&quot;   = &quot;AI &amp; Cancer Prediction (Benefits) – How could AI cancer prediction be beneficial?&quot;,
-  &quot;benb_smc_4&quot;   = &quot;Targeted Ads (Benefits) – How could targeted social media ads be beneficial?&quot;
-)
-ai_missing &lt;- tibble( variable = names(ai_clean), missing = map_int(ai_clean, ~ sum(is.na(.))), missing_pct = round(map_dbl(ai_clean, ~ mean(is.na(.))) * 100, 2) ) %&gt;% arrange(desc(missing_pct)) %&gt;% slice_head(n = 10)
-
-ai_missing_disp &lt;- ai_missing %&gt;%
-  mutate(
-    variable_display = dplyr::recode(variable, !!!name_map, .default = variable)
-    # If you want to keep the code too, use:
-    # variable_display = dplyr::recode(variable, !!!name_map, .default = variable) |&gt;
-    #                    paste0(&quot; (&quot;, variable, &quot;)&quot;)
-  ) %&gt;%
-  select(variable = variable_display, missing, missing_pct)
-
-knitr::kable(ai_missing_disp, caption = &quot;Top 10 Variables with the Highest Missingness&quot;)</code></pre>
 <table>
 <caption>Top 10 Variables with the Highest Missingness</caption>
 <colgroup>
@@ -740,33 +555,9 @@ media ads be beneficial?</td>
 </tr>
 </tbody>
 </table>
-<pre class="r"><code># Detect BENB-like columns and coerce to 0/1 integers where possible
-benb_cols &lt;- names(ai_clean)[str_detect(names(ai_clean), regex(&quot;^benb|benb_job|benefit|benefits|benb_&quot;, ignore_case = TRUE))]
-if (length(benb_cols) == 0) {
-  benb_cols &lt;- names(ai_clean)[str_detect(names(ai_clean), regex(&quot;benefit|benb|job&quot;, ignore_case = TRUE))]
-}
-
-if (length(benb_cols) &gt; 0) {
-  ai_clean &lt;- ai_clean %&gt;%
-    mutate(across(all_of(benb_cols), ~ {
-      x &lt;- .
-      # character encodings -&gt; 1/0
-      if (is.character(x)) {
-        xl &lt;- str_to_lower(str_trim(x))
-        as.integer(if_else(xl %in% c(&quot;yes&quot;,&quot;y&quot;,&quot;1&quot;,&quot;selected&quot;,&quot;true&quot;,&quot;t&quot;), 1L,
-                   if_else(xl %in% c(&quot;no&quot;,&quot;n&quot;,&quot;0&quot;,&quot;false&quot;,&quot;f&quot;), 0L, NA_integer_)))
-      } else if (is.logical(x)) {
-        as.integer(x)
-      } else {
-        # numeric-like: keep 1/0, else NA
-        xi &lt;- suppressWarnings(as.integer(x))
-        if_else(is.na(xi), NA_integer_, xi)
-      }
-    }))
-}</code></pre>
 </div>
 <div id="summary-statistics" class="section level2">
-<h2>Summary statistics</h2>
+<h2>Summary Statistics</h2>
 <pre class="r"><code># Age summaries
 if (&quot;age&quot; %in% names(ai_clean)) {
 ai_clean %&gt;%
