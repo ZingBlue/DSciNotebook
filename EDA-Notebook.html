@@ -352,7 +352,6 @@ display: none;
 </div>
 
 
-<p>@@ -5,114 +5,153 @@ date: “2025-12-01” output: html_document —</p>
 <div id="introduction" class="section level2">
 <h2>Introduction</h2>
 <p><strong>Background</strong></p>
@@ -1249,8 +1248,8 @@ model_df &lt;- model_df %&gt;%
     dr_socio_eco = factor(dr_socio_eco)
   )</code></pre>
 </div>
-<div id="model-1" class="section level2">
-<h2>Model 1</h2>
+<div id="model-1-benefit-score-age" class="section level2">
+<h2>Model 1: Benefit Score ~ Age</h2>
 <pre class="r"><code>model1 &lt;- lm(model_benefit_score ~ age, data = model_df)
 summary(model1)</code></pre>
 <pre><code>## 
@@ -1417,7 +1416,7 @@ ggplot(m3_tidy, aes(x = term, y = estimate)) +
 </div>
 <div id="regression-results" class="section level2">
 <h2>Regression Results</h2>
-<div id="model-1-benefit-score-age" class="section level3">
+<div id="model-1-benefit-score-age-1" class="section level3">
 <h3>Model 1: Benefit Score ~ Age</h3>
 <p>Age is not a significant predictor of the total number of AI benefits
 a respondent selects. The slope is very close to zero, and the model
